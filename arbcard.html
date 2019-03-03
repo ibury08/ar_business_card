@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - geometry - cube</title>
+		<link rel="shortcut icon" href="#" />
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				margin: 0px;
+				
+				overflow: hidden;
+			}
+		</style>
+	</head>
+	<body>
+
+		<script src="ar_business_card-master/build/three.js"></script>
+		<script src="ar_business_card-master/build/ar.js"></script>
+		<script src='ar_business_card-master/build/three.min.js'></script>
+		<script src="ar_business_card-master/examples/js/libs/stats.min.js"></script>
+		<script>THREEx.ArToolkitContext.baseURL = ''</script>
+
+		<script>
+			var camera, scene, renderer;
+			var object;
+			var objects = [];
+			init();
+
+			function init() {
+				
+				renderer = new THREE.WebGLRenderer( { antialias: true, alpha:true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.domElement.style.position = 'absolute'
+				renderer.domElement.style.top = '0px'
+				renderer.domElement.style.left = '0px'
+				document.body.appendChild( renderer.domElement );
+				//
+				projector = new THREE.Projector();
+
+				document.addEventListener('mousedown', onDocumentMouseDown, false);
+			}
+			//add in AR
+			var onRenderFcts= [];
+				var scene	= new THREE.Scene();
+	
+			//////////////////////////////////////////////////////////////////////////////////
+			//		Initialize a basic camera
+			//////////////////////////////////////////////////////////////////////////////////
+
+			// Create a camera
+			var camera = new THREE.Camera();
+			scene.add(camera);
+			////////////////////////////////////////////////////////////////////////////////
+			//          handle arToolkitSource
+			////////////////////////////////////////////////////////////////////////////////
+
+			var arToolkitSource = new THREEx.ArToolkitSource({
+				// to read from the webcam 
+				sourceType : 'webcam',
+
+				// to read from an image
+				// sourceType : 'image',
+				// sourceUrl : THREEx.ArToolkitContext.baseURL + '../data/images/img.jpg',		
+
+				// to read from a video
+				// sourceType : 'video',
+				// sourceUrl : THREEx.ArToolkitContext.baseURL + '../data/videos/headtracking.mp4',		
+			})
+
+			arToolkitSource.init(function onReady(){
+				onResize()
+			})
+			
+			// handle resize
+			window.addEventListener('resize', function(){
+				onResize()
+			})
+			function onResize(){
+				arToolkitSource.onResize()	
+				arToolkitSource.copySizeTo(renderer.domElement)	
+				if( arToolkitContext.arController !== null ){
+					arToolkitSource.copySizeTo(arToolkitContext.arController.canvas)	
+				}	
+			}
+
+			////////////////////////////////////////////////////////////////////////////////
+			//          initialize arToolkitContext
+			////////////////////////////////////////////////////////////////////////////////
+			
+
+			// create atToolkitContext
+			var arToolkitContext = new THREEx.ArToolkitContext({
+				cameraParametersUrl: THREEx.ArToolkitContext.baseURL + 'ar_business_card-master/data/data/camera_para.dat',
+				detectionMode: 'mono',
+				maxDetectionRate: 30,
+				canvasWidth: 80*3,
+				canvasHeight: 60*3,
+			})
+			// initialize it
+			arToolkitContext.init(function onCompleted(){
+				// copy projection matrix to camera
+				camera.projectionMatrix.copy( arToolkitContext.getProjectionMatrix() );
+			})
+
+			// update artoolkit on every frame
+			onRenderFcts.push(function(){
+				if( arToolkitSource.ready === false )	return
+
+				arToolkitContext.update( arToolkitSource.domElement )
+			})
+			
+			
+			////////////////////////////////////////////////////////////////////////////////
+			//          Create a ArMarkerControls
+			////////////////////////////////////////////////////////////////////////////////
+			
+			var markerRoot = new THREE.Group
+			scene.add(markerRoot)
+			var artoolkitMarker = new THREEx.ArMarkerControls(arToolkitContext, markerRoot, {
+				type : 'pattern',
+				patternUrl : THREEx.ArToolkitContext.baseURL + 'ar_business_card-master/data/data/patt.hiro'
+				//patternUrl : THREEx.ArToolkitContext.baseURL + 'ar_business_card-master/data/data/mark.patt'
+				// patternUrl : THREEx.ArToolkitContext.baseURL + '../data/data/patt.kanji'
+			})
+
+			// build a smoothedControls
+			var smoothedRoot = new THREE.Group()
+			scene.add(smoothedRoot)
+			var smoothedControls = new THREEx.ArSmoothedControls(smoothedRoot, {
+				lerpPosition: 0.4,
+				lerpQuaternion: 0.3,
+				lerpScale: 1,
+			})
+			onRenderFcts.push(function(delta){
+				smoothedControls.update(markerRoot)
+			})
+			//////////////////////////////////////////////////////////////////////////////////
+			//		add an object in the scene
+			//////////////////////////////////////////////////////////////////////////////////
+
+			var arWorldRoot = smoothedRoot
+			//LinkedIn
+			var texture = new THREE.TextureLoader().load( 'ar_business_card-master/imgs/li.gif' );
+			var geometry	= new THREE.CubeGeometry(0.25,0.25,0.25);
+			var material	= new THREE.MeshBasicMaterial({
+				map : texture,
+				opacity: 0.9}); 
+			var object	= new THREE.Mesh( geometry, material );
+			object.userData = {URL : "https://www.linkedin.com/in/ian-bury-406b2932/"}
+			object.position.z	= -0.25
+			
+			arWorldRoot.add( object );
+			objects.push(object);
+			//Github
+			var texture = new THREE.TextureLoader().load( 'ar_business_card-master/imgs/gh.gif' );
+
+			var geometry	= new THREE.CubeGeometry(0.25,0.25,0.25);
+			var material	= new THREE.MeshBasicMaterial({
+				map : texture,
+				opacity: 0.9}); 
+			var object	= new THREE.Mesh( geometry, material );
+			object.userData = {URL : "https://github.com/ibury08"}
+			object.position.z	= -0.25
+			object.position.x = 0.33
+			
+			arWorldRoot.add( object );
+			objects.push(object);
+
+			//Text
+			
+
+
+			
+				onRenderFcts.push(function(){
+				//object.rotation.z += 0.1
+			})
+
+
+
+			//////////////////////////////////////////////////////////////////////////////////
+			//		render the whole thing on the page
+			//////////////////////////////////////////////////////////////////////////////////
+			var stats = new Stats();
+			document.body.appendChild( stats.dom );
+			// render the scene
+			onRenderFcts.push(function(){
+				renderer.render( scene, camera );
+				stats.update();
+			})
+
+			// run the rendering loop
+			var lastTimeMsec= null
+			requestAnimationFrame(function animate(nowMsec){
+				// keep looping
+				requestAnimationFrame( animate );
+				// measure time
+				lastTimeMsec	= lastTimeMsec || nowMsec-1000/60
+				var deltaMsec	= Math.min(200, nowMsec - lastTimeMsec)
+				lastTimeMsec	= nowMsec
+				// call each update function
+				onRenderFcts.forEach(function(onRenderFct){
+					onRenderFct(deltaMsec/1000, nowMsec/1000)
+				})
+			})
+
+
+			//function onWindowResize() {
+			//	camera.aspect = window.innerWidth / window.innerHeight;
+			//	camera.updateProjectionMatrix();
+			//	renderer.setSize( window.innerWidth, window.innerHeight );
+		//	}
+			//function animate() {
+			//	requestAnimationFrame( animate );
+			//	object.rotation.x += 0.02;
+			//	object.rotation.y += 0.02;
+			//	renderer.render( scene, camera );
+			//}
+			function onDocumentMouseDown(event) {
+    			event.preventDefault();
+    			var vector = new THREE.Vector3((event.clientX / window.innerWidth) * 2 -
+        					1, -(event.clientY / window.innerHeight) * 2 + 1, 0.5);
+    			projector.unprojectVector(vector, camera);
+    			var raycaster = new THREE.Raycaster(camera.position, vector.sub(camera.position)
+        				.normalize());
+    			var intersects = raycaster.intersectObjects(objects);
+    			if (intersects.length > 0) {
+        			window.open(intersects[0].object.userData.URL);
+    					}
+}
+		</script>
+
+	</body>
+</html>
